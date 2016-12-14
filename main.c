@@ -41,24 +41,23 @@
 /* Standard Includes already here from the example*/
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdio.h>
 
 /* Maths Includes */
 #include <math.h>  // This library is required to use the "sin" function
 
+/* Filter Includes */
 #include "filters.h"
 
+/* Define variables */
+#define PTS 50 // no of points in one cycle of a sine wave
 #define PI 3.14159265f
-
-//=---=--=--=
-#include <stdio.h>
-//=-=-=-=-=--=
-
+volatile float sin_value[PTS];
 
 int main(void)
 {
     /* Halting the Watchdog */
     MAP_WDT_A_holdTimer();  // This command is used in almost all programs to stop the MSP from stopping automatically.
-
 
     /* P6.0 set as output.  This is used for timing the duration of the systick_isr.  P6.0 is set high on entering the systick_isr and
      * off on exiting.  An oscilloscope can be used to monitor how much time the interrupt requires to complete all the operations.
@@ -66,22 +65,27 @@ int main(void)
     P6DIR |= BIT0;
     P1DIR |= BIT0;
 
-
     /* Configure P5.6 to its analog function to output VREF.  VREF is set to 1.2V below and so the ADC input voltage should be between 0 V and 1.2 V */
     	P5SEL0 |= BIT6 | BIT7; // Set pins P5.6 and P5.7 as external reference voltage. See section 10.2.6 in slau356a.pdf, tables 4.1 and 6.45 of msp432p401r.pdf, slau596.pdf.
         P5SEL1 |= BIT6 | BIT7; // Set pins P5.6 and P5.7 as external reference voltage. See section 10.2.6 in slau356a.pdf, tables 4.1 and 6.45 of msp432p401r.pdf, slau596.pdf.
 
-
         REFCTL0 |= REFON;                     // Turn on reference module.  Section 19.3.1 in slau365a.pdf.
         REFCTL0 |= REFOUT;                    // Output reference voltage to a pin.  Section 19.3.1 in slau365a.pdf.
-
 
      /* Output VREF = 1.2V */
         REFCTL0 &= ~(REFVSEL_3);              // Clear existing VREF voltage level setting. Table 19-2 in slau365a.pdf.
         REFCTL0 |= REFVSEL_0;                 // Set VREF = 1.2V. Table 19-2 in slau365a.pdf.
         while (REFCTL0 & REFGENBUSY);       // Wait until the reference generation is settled.  Table 19-2 in slau365a.pdf.
 
-
+     /* Generate 7kHz sine wave */
+	int t;
+	for( t = 0; t < PTS; t = t + 1)
+	{
+		float a = 7.0;
+		//sin_value[t] = 255*(sin(2*PI*(t/((float)PTS)))+1)/2; // original example code
+		sin_value[t] = 255*(sin(2*PI*a*(t/((float)PTS)))+1)/2;
+	}
+	
     /* Configuring pins for high frequency crystal (HFXT) crystal for 48 MHz clock */
     MAP_GPIO_setAsPeripheralModuleFunctionInputPin(GPIO_PORT_PJ,
             GPIO_PIN2 | GPIO_PIN3, GPIO_PRIMARY_MODULE_FUNCTION); //  Section 10.4.2.13 in MSP432_DriverLib_Users_Guide.  In Figure 4.1 in msp432p401r.pdf, you can see that the HFXT is conneccted to pins 2 and 3 of Port J.
@@ -152,41 +156,8 @@ int main(void)
             MAP_ADC14_enableSampleTimer(ADC_MANUAL_ITERATION);
         //==--=--==-=-=-=--=
 
-    /* Configuring pins for HFXT crystal */
-    MAP_GPIO_setAsPeripheralModuleFunctionInputPin(GPIO_PORT_PJ,
-            GPIO_PIN2 | GPIO_PIN3, GPIO_PRIMARY_MODULE_FUNCTION);
-
-    MAP_GPIO_setAsOutputPin(GPIO_PORT_P6, GPIO_PIN0);
-
-
-    MAP_GPIO_setAsOutputPin(GPIO_PORT_P2, GPIO_PIN0 | GPIO_PIN1 | GPIO_PIN2 | GPIO_PIN3 | GPIO_PIN4 | GPIO_PIN5 | GPIO_PIN6 | GPIO_PIN7);
-
-
-    /* Configuring GPIOs (P4.3 MCLK) */
-       MAP_GPIO_setAsPeripheralModuleFunctionOutputPin(GPIO_PORT_P4, GPIO_PIN3,
-       GPIO_PRIMARY_MODULE_FUNCTION);
-
-    /* Setting the external clock frequency. This API is optional, but will
-     * come in handy if the user ever wants to use the getMCLK/getACLK/etc
-     * functions
-     */
-    CS_setExternalClockSourceFrequency(32000,48000000);
-
-    /* Starting HFXT in non-bypass mode without a timeout. Before we start
-     * we have to change VCORE to 1 to support the 48MHz frequency */
-    MAP_PCM_setCoreVoltageLevel(PCM_VCORE1);
-    MAP_FlashCtl_setWaitState(FLASH_BANK0, 2);
-    MAP_FlashCtl_setWaitState(FLASH_BANK1, 2);
-    CS_startHFXT(false);
-
-    /* Initializing MCLK to HFXT (effectively 48MHz) */
-    MAP_CS_initClockSignal(CS_MCLK, CS_HFXTCLK_SELECT, CS_CLOCK_DIVIDER_1);
-
      /* Enabling MASTER interrupts */
     MAP_Interrupt_enableMaster();
-
-	
-	
 	
     while (1)
     {
@@ -194,7 +165,6 @@ int main(void)
     }
 
 }
-
 
 
 /* The following systick_isr is called 50000 times a second, i.e. 50 kHz, controlled by the master clock and SysTick  */
@@ -205,7 +175,6 @@ void systick_isr(void)
 		i = i+1;
 	//-=-=-=-=-=ADC
 	static long temp_ADC = 0;
-
 
 		temp_ADC = ADC14->MEM[0];  //Get the conversion result.  Alternatively, you can use temp_ADC = ADC14_getResult(ADC_MEM0)
 		P2OUT = temp_ADC / 4;  //We do this because the ADC is set to use 10 bits but P2OUT is only 8 bits.
@@ -222,17 +191,16 @@ void systick_isr(void)
 		MAP_ADC14_toggleConversionTrigger();
 	//--==-=-=-=-
 
-
-
-
-
 	P1OUT |= BIT0;
-
-	float input = temp_ADC;
-	
+	float input = temp_ADC;	
 	float input_bandstop = bandstop(input);
-
-	printf("%f\n",input_bandstop);
+	//printf("%f\n",input_bandstop);
+	
+	/* DAC */
+	static int j = 0;
+	
+	output = input_bandstop;
+	P2OUT = output;  // This is where our output is written to the 8 output pins of port 2 (we hope!)
 
 	P6OUT &= ~BIT0; // set P6.0 low on exiting this interrupt service routine (isr). Include yours codes above
 }
