@@ -1,0 +1,1 @@
+"./cs_hfxt_start.obj" "./startup_msp432p401r_ccs.obj" "./system_msp432p401r.obj" "../cs_hfxt_start_ccs.cmd" "C:/ti/tirex-content/msp/MSPWare_3_30_01_00/driverlib/driverlib/MSP432P4xx/ccs/msp432p4xx_driverlib.lib" -llibc.a 
