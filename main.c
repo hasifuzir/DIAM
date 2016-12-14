@@ -49,7 +49,9 @@
 
 #define PI 3.14159265f
 
-
+//=---=--=--=
+#include <stdio.h>
+//=-=-=-=-=--=
 
 
 int main(void)
@@ -83,6 +85,14 @@ int main(void)
     /* Configuring pins for high frequency crystal (HFXT) crystal for 48 MHz clock */
     MAP_GPIO_setAsPeripheralModuleFunctionInputPin(GPIO_PORT_PJ,
             GPIO_PIN2 | GPIO_PIN3, GPIO_PRIMARY_MODULE_FUNCTION); //  Section 10.4.2.13 in MSP432_DriverLib_Users_Guide.  In Figure 4.1 in msp432p401r.pdf, you can see that the HFXT is conneccted to pins 2 and 3 of Port J.
+
+    //-=-=-==--==-=-=-=-=-=--LIGHTS-=-=ADC
+        /* Set P6.0 as output */
+        MAP_GPIO_setAsOutputPin(GPIO_PORT_P6, GPIO_PIN0);
+
+        /* Set all 8 pins of P2 as output */
+        MAP_GPIO_setAsOutputPin(GPIO_PORT_P2, GPIO_PIN0 | GPIO_PIN1 | GPIO_PIN2 | GPIO_PIN3 | GPIO_PIN4 | GPIO_PIN5 | GPIO_PIN6 | GPIO_PIN7);
+    //==-=-=-=--=-==-=-=-=-
 
 
     /* Set P4.3 to output the internal 48 MHz master clock as (MCLK) its primary function so you can check with a scope on this pin to make sure the clock is indeed 48 MHz */
@@ -118,6 +128,30 @@ int main(void)
     MAP_Interrupt_enableSleepOnIsrExit();  //Enables the processor to sleep when exiting an ISR. For low power operation, this is ideal as power cycles are not wasted with the processing required for waking up from an ISR and going back to sleep.
     MAP_SysTick_enableInterrupt();  // Enable timer interrupt.
 
+    //=-=-=-=-=--==-=-=-=-=
+        /* Initializing ADC (MCLK/1//1) */
+            MAP_ADC14_enableModule();
+            MAP_ADC14_initModule(ADC_CLOCKSOURCE_MCLK, ADC_PREDIVIDER_1, ADC_DIVIDER_1,
+            0);
+
+            /* Configuring GPIOs (P5.0 (A5) as the ADC input pin) */
+            MAP_GPIO_setAsPeripheralModuleFunctionInputPin(GPIO_PORT_P5, GPIO_PIN0,
+            GPIO_TERTIARY_MODULE_FUNCTION);
+
+            /* Configure ADC Resolution */
+            ADC14_setResolution(ADC_10BIT);
+
+
+            /* Configuring ADC Memory */
+            MAP_ADC14_configureSingleSampleMode(ADC_MEM0, true);
+            MAP_ADC14_configureConversionMemory(ADC_MEM0, ADC_VREFPOS_INTBUF_VREFNEG_VSS,
+            ADC_INPUT_A5, false);
+
+
+            /* Configuring Sample Timer */
+            MAP_ADC14_enableSampleTimer(ADC_MANUAL_ITERATION);
+        //==--=--==-=-=-=--=
+
 
      /* Enabling MASTER interrupts */
     MAP_Interrupt_enableMaster();
@@ -139,14 +173,36 @@ void systick_isr(void)
 {
 	static int i = 0;
 	P6OUT |= BIT0; // set P6.0 high on entering this interrupt service routine (isr). Include your codes below
-	i = i+1;
+		i = i+1;
+	//-=-=-=-=-=ADC
+	static long temp_ADC = 0;
+
+
+		temp_ADC = ADC14->MEM[0];  //Get the conversion result.  Alternatively, you can use temp_ADC = ADC14_getResult(ADC_MEM0)
+		P2OUT = temp_ADC / 4;  //We do this because the ADC is set to use 10 bits but P2OUT is only 8 bits.
+
+	    if(i==2){
+	//    	float voltage = temp_ADC/1023 * 3.3;
+	    	printf("%ld\n",temp_ADC);
+	    	i=0;
+	    }
+
+		/* Enabling/Toggling Conversion */
+		MAP_ADC14_enableConversion();
+		MAP_ADC14_toggleConversionTrigger();
+		MAP_ADC14_toggleConversionTrigger();
+	//--==-=-=-=-
+
+
+
+
 
 	P1OUT |= BIT0;
 
 	float input = ;
 	
 	float input_bandstop = bandstop(input);
-	
+
 
 	P6OUT &= ~BIT0; // set P6.0 low on exiting this interrupt service routine (isr). Include yours codes above
 }
