@@ -45,7 +45,7 @@
 /* Maths Includes */
 #include <math.h>  // This library is required to use the "sin" function
 
-#include "filter.h"
+#include "filters.h"
 
 #define PI 3.14159265f
 
@@ -181,11 +181,11 @@ void systick_isr(void)
 		temp_ADC = ADC14->MEM[0];  //Get the conversion result.  Alternatively, you can use temp_ADC = ADC14_getResult(ADC_MEM0)
 		P2OUT = temp_ADC / 4;  //We do this because the ADC is set to use 10 bits but P2OUT is only 8 bits.
 
-	    if(i==2){
+//	    if(i==2){
 	//    	float voltage = temp_ADC/1023 * 3.3;
-	    	printf("%ld\n",temp_ADC);
-	    	i=0;
-	    }
+//	    	printf("%ld\n",temp_ADC);
+//	    	i=0;
+//	    }
 
 		/* Enabling/Toggling Conversion */
 		MAP_ADC14_enableConversion();
@@ -199,10 +199,11 @@ void systick_isr(void)
 
 	P1OUT |= BIT0;
 
-	float input = ;
+	float input = temp_ADC;
 	
 	float input_bandstop = bandstop(input);
 
+	printf("%f\n",input_bandstop);
 
 	P6OUT &= ~BIT0; // set P6.0 low on exiting this interrupt service routine (isr). Include yours codes above
 }
