@@ -4,33 +4,45 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 CMD_SRCS += \
-../msp432p401r.cmd 
+../cs_hfxt_start_ccs.cmd 
 
 LIB_SRCS += \
-../msp432p4xx_driverlib.lib 
+C:/ti/tirex-content/msp/MSPWare_3_30_01_00/driverlib/driverlib/MSP432P4xx/ccs/msp432p4xx_driverlib.lib 
 
 C_SRCS += \
-../main.c \
-../msp432_startup_ccs.c 
+../cs_hfxt_start.c \
+../filters.c \
+../startup_msp432p401r_ccs.c \
+../system_msp432p401r.c 
 
 OBJS += \
-./main.obj \
-./msp432_startup_ccs.obj 
+./cs_hfxt_start.obj \
+./filters.obj \
+./startup_msp432p401r_ccs.obj \
+./system_msp432p401r.obj 
 
 C_DEPS += \
-./main.pp \
-./msp432_startup_ccs.pp 
+./cs_hfxt_start.d \
+./filters.d \
+./startup_msp432p401r_ccs.d \
+./system_msp432p401r.d 
 
 C_DEPS__QUOTED += \
-"main.pp" \
-"msp432_startup_ccs.pp" 
+"cs_hfxt_start.d" \
+"filters.d" \
+"startup_msp432p401r_ccs.d" \
+"system_msp432p401r.d" 
 
 OBJS__QUOTED += \
-"main.obj" \
-"msp432_startup_ccs.obj" 
+"cs_hfxt_start.obj" \
+"filters.obj" \
+"startup_msp432p401r_ccs.obj" \
+"system_msp432p401r.obj" 
 
 C_SRCS__QUOTED += \
-"../main.c" \
-"../msp432_startup_ccs.c" 
+"../cs_hfxt_start.c" \
+"../filters.c" \
+"../startup_msp432p401r_ccs.c" \
+"../system_msp432p401r.c" 
 
 

@@ -4,15 +4,20 @@
 
 SHELL = cmd.exe
 
-CG_TOOL_ROOT := C:/ti/ccsv6/tools/compiler/ti-cgt-arm_5.2.4
+CG_TOOL_ROOT := C:/ti/ccsv6/tools/compiler/ti-cgt-arm_15.12.4.LTS
+
+GEN_OPTS__FLAG := 
+GEN_CMDS__FLAG := 
 
 ORDERED_OBJS += \
-"./main.obj" \
-"./msp432_startup_ccs.obj" \
-"../msp432p401r.cmd" \
-"../msp432p4xx_driverlib.lib" \
+"./cs_hfxt_start.obj" \
+"./filters.obj" \
+"./startup_msp432p401r_ccs.obj" \
+"./system_msp432p401r.obj" \
+"../cs_hfxt_start_ccs.cmd" \
+"C:/ti/tirex-content/msp/MSPWare_3_30_01_00/driverlib/driverlib/MSP432P4xx/ccs/msp432p4xx_driverlib.lib" \
 $(GEN_CMDS__FLAG) \
--l"libc.a" \
+-llibc.a \
 
 -include ../makefile.init
 
@@ -43,6 +48,9 @@ ifneq ($(strip $(ASM_DEPS)),)
 endif
 ifneq ($(strip $(CC_DEPS)),)
 -include $(CC_DEPS)
+endif
+ifneq ($(strip $(SV7A_DEPS)),)
+-include $(SV7A_DEPS)
 endif
 ifneq ($(strip $(S55_DEPS)),)
 -include $(S55_DEPS)
@@ -116,45 +124,51 @@ endif
 
 # Add inputs and outputs from these tool invocations to the build variables 
 EXE_OUTPUTS += \
-Template.out \
+cs_hfxt_start.out \
 
 EXE_OUTPUTS__QUOTED += \
-"Template.out" \
+"cs_hfxt_start.out" \
 
 BIN_OUTPUTS += \
-Template.hex \
+cs_hfxt_start.bin \
 
 BIN_OUTPUTS__QUOTED += \
-"Template.hex" \
+"cs_hfxt_start.bin" \
 
 
 # All Target
-all: Template.out
+all: cs_hfxt_start.out
 
 # Tool invocations
-Template.out: $(OBJS) $(CMD_SRCS) $(LIB_SRCS) $(GEN_CMDS)
+cs_hfxt_start.out: $(OBJS) $(CMD_SRCS) $(LIB_SRCS) $(GEN_CMDS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: MSP432 Linker'
-	"C:/ti/ccsv6/tools/compiler/ti-cgt-arm_5.2.4/bin/armcl" -mv7M4 --code_state=16 --float_support=FPv4SPD16 --abi=eabi -me --advice:power=all -g --gcc --define=__MSP432P401R__ --define=TARGET_IS_MSP432P4XX --define=ccs --diag_warning=225 --display_error_number --diag_wrap=off -z -m"Template.map" --heap_size=1024 --stack_size=512 -i"C:/ti/ccsv6/ccs_base/arm/include" -i"C:/ti/ccsv6/tools/compiler/ti-cgt-arm_5.2.4/lib" -i"C:/ti/ccsv6/tools/compiler/ti-cgt-arm_5.2.4/include" --reread_libs --warn_sections --diag_wrap=off --display_error_number --xml_link_info="Template_linkInfo.xml" --rom_model -o "Template.out" $(ORDERED_OBJS)
+	"C:/ti/ccsv6/tools/compiler/ti-cgt-arm_15.12.4.LTS/bin/armcl" -mv7M4 --code_state=16 --float_support=FPv4SPD16 -me --advice:power=all -g --gcc --define=__MSP432P401R__ --define=TARGET_IS_MSP432P4XX --define=ccs --diag_warning=225 --diag_wrap=off --display_error_number -z -m"cs_hfxt_start.map" --stack_size=512 -i"C:/ti/ccsv6/tools/compiler/ti-cgt-arm_15.12.4.LTS/lib" -i"C:/ti/ccsv6/tools/compiler/ti-cgt-arm_15.12.4.LTS/include" --reread_libs --warn_sections --diag_wrap=off --display_error_number --xml_link_info="cs_hfxt_start_linkInfo.xml" --rom_model -o "cs_hfxt_start.out" $(ORDERED_OBJS)
 	@echo 'Finished building target: $@'
 	@echo ' '
+	@$(MAKE) --no-print-directory post-build
 
-Template.hex: $(EXE_OUTPUTS)
+cs_hfxt_start.bin: $(EXE_OUTPUTS)
 	@echo 'Invoking: MSP432 Hex Utility'
-	"C:/ti/ccsv6/tools/compiler/ti-cgt-arm_5.2.4/bin/armhex"  -o "Template.hex" $(EXE_OUTPUTS__QUOTED)
+	"C:/ti/ccsv6/tools/compiler/ti-cgt-arm_15.12.4.LTS/bin/armhex"  -o "cs_hfxt_start.bin" $(EXE_OUTPUTS__QUOTED)
 	@echo 'Finished building: $@'
 	@echo ' '
+	@$(MAKE) --no-print-directory post-build
 
 # Other Targets
 clean:
 	-$(RM) $(EXE_OUTPUTS__QUOTED)$(BIN_OUTPUTS__QUOTED)
-	-$(RM) "main.pp" "msp432_startup_ccs.pp" 
-	-$(RM) "main.obj" "msp432_startup_ccs.obj" 
+	-$(RM) "cs_hfxt_start.d" "filters.d" "startup_msp432p401r_ccs.d" "system_msp432p401r.d" 
+	-$(RM) "cs_hfxt_start.obj" "filters.obj" "startup_msp432p401r_ccs.obj" "system_msp432p401r.obj" 
 	-@echo 'Finished clean'
 	-@echo ' '
 
+post-build:
+	-C:/ti/ccsv6/utils/tiobj2bin/tiobj2bin cs_hfxt_start.out cs_hfxt_start.bin C:/ti/ccsv6/tools/compiler/ti-cgt-arm_15.12.4.LTS/bin/armofd C:/ti/ccsv6/tools/compiler/ti-cgt-arm_15.12.4.LTS/bin/armhex C:/ti/ccsv6/utils/tiobj2bin/mkhex4bin
+	-@echo ' '
+
 .PHONY: all clean dependents
-.SECONDARY:
+.SECONDARY: post-build
 
 -include ../makefile.targets
 

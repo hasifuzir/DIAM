@@ -1,41 +1,9 @@
 
 /*******************************************************************************
- * Template for Real-time Audio Descrambler, Second Year Scenario.
- *
- * This template is provided for your use in the Real-time Audio Descrambler Scenario.
- *
- * The template sets up all the important peripherals on the MSP432 for you.  This includes setting up the 48 MHz
- * high-frequency crystal (HFXT), the master clock MCLK to run at 48 MHz, the internal core voltage for 48 MHz
- * operation, the ADC reference voltages and outputting them to P5.6 and P5.7.
- * However, you need to set up the ADC yourself.
- *
- * Most importantly, the template sets up the timer SysTick to count 960 clock cycles.  Every time 960 clock cycles
- * or periods have passed, SysTick will generate an interrupt and the interrupt service routine systick_isr will be called.
- * Since the master clock is 48 MHz, systick_isr will be called 50,000 times a second (48 MHz / 960 = 50,000) or 50 kHz.
- * Any commands or functions inside systick_isr will therefore be executed at 50 kHz which can be used as
- * your sampling frequency.
- *
- * The descrambling and filtering functions should be implemented inside the systick_isr as these are
- * related to and run at the sampling frequency, i.e. 50 kHz.
- *
- * Anything else that only needs to be run once but not repeatedly should be implemented inside the function main{}.
- *
- * You need to make your codes as efficient as possible.  Any codes you put in systick_isr must be completed
- * before the next interrupt is generated.  To see how long it will take to perform all the functions inside systick_isr,
- * in this template, P6.0 is set to high at the start of systick_isr.  At the end of systick_isr, P6.0 is set to low.
- * You can therefore use an oscilloscope to measure the output at P6.0 to see how long it takes the systick_isr to
- * complete all the codes there.
- *
- * You should save the whole template folder in the workspace folder of the Code Composer Studio (CCS).  Then within CCS,
- * "import" this project.
- *
- *
- *
  * By Dr Chin-Pang Liu, University College London, 2015
  ******************************************************************************/
 
-
-/* DriverLib Includes */
+//DriverLib Includes
 #include "driverlib.h" // This library is required if you want to use the library functions such as "MAP_GPIO_setAsPeripheralModuleFunctionInputPin"
 
 /* Standard Includes already here from the example*/
@@ -52,7 +20,8 @@
 /* Define variables */
 #define PTS 50 // no of points in one cycle of a sine wave
 #define PI 3.14159265f
-volatile float sin_value[PTS];
+static volatile float sin_value[PTS];
+static volatile float currentADC = 0;
 
 
 int main(void)
@@ -68,7 +37,7 @@ int main(void)
 
     /* Configure P5.6 to its analog function to output VREF.  VREF is set to 1.2V below and so the ADC input voltage should be between 0 V and 1.2 V */
 	P5SEL0 |= BIT6 | BIT7; // Set pins P5.6 and P5.7 as external reference voltage. See section 10.2.6 in slau356a.pdf, tables 4.1 and 6.45 of msp432p401r.pdf, slau596.pdf.
-	P5SEL1 |= BIT6 | BIT7; // Set pins P5.6 and P5.7 as external reference voltage. See section 10.2.6 in slau356a.pdf, tables 4.1 and 6.45 of msp432p401r.pdf, slau596.pdf.
+	P5SEL1 |= BIT6 | BIT7; // St pins P5.6 and P5.7 as external reference voltage. See section 10.2.6 in slau356a.pdf, tables 4.1 and 6.45 of msp432p401r.pdf, slau596.pdf.
 
 	REFCTL0 |= REFON;                     // Turn on reference module.  Section 19.3.1 in slau365a.pdf.
 	REFCTL0 |= REFOUT;                    // Output reference voltage to a pin.  Section 19.3.1 in slau365a.pdf.
@@ -77,15 +46,22 @@ int main(void)
 	REFCTL0 &= ~(REFVSEL_3);              // Clear existing VREF voltage level setting. Table 19-2 in slau365a.pdf.
 	REFCTL0 |= REFVSEL_0;                 // Set VREF = 1.2V. Table 19-2 in slau365a.pdf.
 	while (REFCTL0 & REFGENBUSY);         // Wait until the reference generation is settled.  Table 19-2 in slau365a.pdf.
+	//Enable FPU
+	MAP_FPU_enableModule();
+	MAP_FPU_enableLazyStacking();
+	FPU_setFlushToZeroMode(FPU_FLUSH_TO_ZERO_EN);
 
-     /* Generate 7kHz sine wave */
+	/* Generate 7kHz sine wave */
 	int t;
 	for( t = 0; t < PTS; t = t + 1)
 	{
 		float a = 7.0;
 		//sin_value[t] = 255*(sin(2*PI*(t/((float)PTS)))+1)/2; // original example code
-		sin_value[t] = 255*(sin(2*PI*a*(t/((float)PTS)))+1)/2;
+		//sin_value[t] = 255*(sin(2*PI*a*(t/((float)PTS)))+1)/2;
+		sin_value[t] = 255*(sin(a*2*PI*(t/(float)PTS))+1)/2;
 	}
+
+
 
     /* Configuring pins for high frequency crystal (HFXT) crystal for 48 MHz clock */
     MAP_GPIO_setAsPeripheralModuleFunctionInputPin(GPIO_PORT_PJ,GPIO_PIN2 | GPIO_PIN3, GPIO_PRIMARY_MODULE_FUNCTION); //  Section 10.4.2.13 in MSP432_DriverLib_Users_Guide.  In Figure 4.1 in msp432p401r.pdf, you can see that the HFXT is conneccted to pins 2 and 3 of Port J.
@@ -115,10 +91,8 @@ int main(void)
     MAP_FlashCtl_setWaitState(FLASH_BANK1, 2);
     CS_startHFXT(false);  // Initialise the HFXT.  "false" means we are not using the bypass mode but are using the crystal.  Section 6.6.2.27 in MSP432_DriverLib_Users_Guide.
 
-
     /* Initializing the master clock (MCLK) to HFXT (effectively 48MHz) */
     MAP_CS_initClockSignal(CS_MCLK, CS_HFXTCLK_SELECT, CS_CLOCK_DIVIDER_1);  // The divider is set to 1 and so the MCLK is the same as the HFXT at 48 MHz.  Section 6.6.2.18 in in MSP432_DriverLib_Users_Guide.
-
 
     /* Configuring the timer SysTick to trigger at 50 kHz which will be the sampling frequency for sampling and processing the audio signal.
      * See Chapter 22 in MSP432_DriverLib_Users_Guide.
@@ -138,12 +112,14 @@ int main(void)
     /* Configure ADC Resolution */
     ADC14_setResolution(ADC_10BIT);
 
-
     /* Configuring ADC Memory */
     MAP_ADC14_configureSingleSampleMode(ADC_MEM0, true);
     MAP_ADC14_configureConversionMemory(ADC_MEM0, ADC_VREFPOS_INTBUF_VREFNEG_VSS, ADC_INPUT_A5, false);
     /* Configuring Sample Timer */
 	MAP_ADC14_enableSampleTimer(ADC_MANUAL_ITERATION);
+
+
+
 
      /* Enabling MASTER interrupts */
     MAP_Interrupt_enableMaster();
@@ -155,28 +131,16 @@ int main(void)
 
 }
 
-int j = 0;
-
-
 /* The following systick_isr is called 50000 times a second, i.e. 50 kHz, controlled by the master clock and SysTick  */
 void systick_isr(void)
 {
 	//static int i = 0;
 	P6OUT |= BIT0; // set P6.0 high on entering this interrupt service routine (isr). Include your codes below
 
-	//MAP_ADC14_toggleConversionTrigger();
+	static int j = 0;
 
-	//i = i+1;
 	static long temp_ADC = 0;
-	float factor = 4.0;
-	temp_ADC = ADC14->MEM[0];  //Get the conversion result.  Alternatively, you can use temp_ADC = ADC14_getResult(ADC_MEM0)
-	float con_ADC = temp_ADC/factor;  // We do this because the ADC is set to use 10 bits but P2OUT is only 8 bits.
-
-//	    if(i==2){
-	//    	float voltage = temp_ADC/1023 * 3.3;
-//	    	printf("%ld\n",temp_ADC);
-//	    	i=0;
-//	    }
+	temp_ADC = ADC14_getResult(ADC_MEM0);  //Get the conversion result.  Alternatively, you can use temp_ADC = ADC14_getResult(ADC_MEM0)
 
 	/* Enabling/Toggling Conversion */
 	MAP_ADC14_enableConversion();
@@ -184,14 +148,15 @@ void systick_isr(void)
 	MAP_ADC14_toggleConversionTrigger();
 
 	/* Descrambling functions*/
-	float input_bandstop = bandstop(con_ADC);
-	float multiply = input_bandstop*sin_value[j];
+	float input_bandstop = bandstop(temp_ADC);
+	float multiply = (input_bandstop * sin_value[j]);
+	float con_ADC = (multiply/4);  // We do this because the ADC is set to use 10 bits but P2OUT is only 8 bits. Factor is 4.
 
 	/* DAC */
-	float output = multiply;
+	float output = con_ADC;
 	P2OUT = output;  // This is where our output is written to the 8 output pins of port 2 (we hope!)
 
-	j = j+1;
+	j = j + 1;
 	if (j >= PTS)
 	{
 		j = 0; // reset j
@@ -200,9 +165,6 @@ void systick_isr(void)
 	P6OUT &= ~BIT0; // set P6.0 low on exiting this interrupt service routine (isr). Include yours codes above
 
 }
-
-
-
 
 /* ADC Interrupt Handler. This handler is called whenever there is a conversion
 * that is finished for ADC_MEM0.
@@ -215,6 +177,3 @@ void adc_isr(void)
 	/* This simply clears the ADC14 interrupt and exits this adc_isr. */
 
 }
-
-
-
