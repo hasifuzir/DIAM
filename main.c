@@ -1,8 +1,3 @@
-
-/*******************************************************************************
- * By Dr Chin-Pang Liu, University College London, 2015
- ******************************************************************************/
-
 //DriverLib Includes
 #include "driverlib.h" // This library is required if you want to use the library functions such as "MAP_GPIO_setAsPeripheralModuleFunctionInputPin"
 
@@ -18,11 +13,10 @@
 #include "filters.h"
 
 /* Define variables */
-#define PTS 50 // no of points in one cycle of a sine wave
+#define PTS 50f // no of points in one cycle of a sine wave
 #define PI 3.14159265f
 static volatile float sin_value[PTS];
 static volatile float currentADC = 0;
-
 
 int main(void)
 {
@@ -55,13 +49,11 @@ int main(void)
 	int t;
 	for( t = 0; t < PTS; t = t + 1)
 	{
-		float a = 7.0;
+		float a = 7.0f;
 		//sin_value[t] = 255*(sin(2*PI*(t/((float)PTS)))+1)/2; // original example code
 		//sin_value[t] = 255*(sin(2*PI*a*(t/((float)PTS)))+1)/2;
-		sin_value[t] = 255*(sin(a*2*PI*(t/(float)PTS))+1)/2;
+		sin_value[t] = (sin(a*2*PI*(t/(float)PTS))+1);
 	}
-
-
 
     /* Configuring pins for high frequency crystal (HFXT) crystal for 48 MHz clock */
     MAP_GPIO_setAsPeripheralModuleFunctionInputPin(GPIO_PORT_PJ,GPIO_PIN2 | GPIO_PIN3, GPIO_PRIMARY_MODULE_FUNCTION); //  Section 10.4.2.13 in MSP432_DriverLib_Users_Guide.  In Figure 4.1 in msp432p401r.pdf, you can see that the HFXT is conneccted to pins 2 and 3 of Port J.
@@ -74,12 +66,10 @@ int main(void)
 
     /* Set P4.3 to output the internal 48 MHz master clock as (MCLK) its primary function so you can check with a scope on this pin to make sure the clock is indeed 48 MHz */
 	MAP_GPIO_setAsPeripheralModuleFunctionOutputPin(GPIO_PORT_P4, GPIO_PIN3, GPIO_PRIMARY_MODULE_FUNCTION);
-
-
+	
     /* There is a 32 kHz low frequency crystal (LFXT) and a 48 MHz high frequency crystal (HFXT) on the Launchpad. This command tells the MSP432 what frequencies these two external crystals are*/
     /* Section 6.6.2.4 in MSP432_DriverLib_Users_Guide*/
 	CS_setExternalClockSourceFrequency(32000,48000000);
-
 
     /* Starting HFXT in non-bypass mode without a timeout.
      * Before increasing MCLK to a higher speed, it is necessary for software to ensure that the CPU voltage or core voltage (VCORE level) is
@@ -117,9 +107,6 @@ int main(void)
     MAP_ADC14_configureConversionMemory(ADC_MEM0, ADC_VREFPOS_INTBUF_VREFNEG_VSS, ADC_INPUT_A5, false);
     /* Configuring Sample Timer */
 	MAP_ADC14_enableSampleTimer(ADC_MANUAL_ITERATION);
-
-
-
 
      /* Enabling MASTER interrupts */
     MAP_Interrupt_enableMaster();
@@ -163,7 +150,7 @@ void systick_isr(void)
 	}
 
 	P6OUT &= ~BIT0; // set P6.0 low on exiting this interrupt service routine (isr). Include yours codes above
-
+	
 }
 
 /* ADC Interrupt Handler. This handler is called whenever there is a conversion
