@@ -15,7 +15,7 @@
  float bandstop(float input){
 
 	 update_delay(bandstop_buffer);
-	 float output = filter(input, bandstop_buffer, bandstop_num, bandstop_den);
+	 float output = filter(input, bandstop_buffer, bandstop_den, bandstop_num);
 	 
 	 return output * bandstop_gain;
 	 
